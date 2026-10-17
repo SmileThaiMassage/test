@@ -78,23 +78,19 @@ function cambiaLingua(lang) {
   }
   tentativiCombo = 0;
   if (lang === 'it') {
+    // già in italiano: niente da fare
+    if (linguaDaCookie() === 'it') { evidenziaLingua('it'); return; }
+    // unico metodo affidabile per tornare all'originale: cancellare il cookie
+    // di traduzione e ricaricare dal server (il sito resta in italiano)
+    evidenziaLingua('it');
     cancellaCookieGoogtrans();
-    combo.value = '';
-    combo.dispatchEvent(new Event('change'));
-    // se il ripristino istantaneo non funziona, ricarica la pagina in italiano
-    setTimeout(() => {
-      if (document.body.classList.contains('translated-ltr') ||
-          document.body.classList.contains('translated-rtl')) {
-        location.reload();
-      } else {
-        evidenziaLingua('it');
-      }
-    }, 700);
-  } else {
-    combo.value = lang;
-    combo.dispatchEvent(new Event('change'));
-    evidenziaLingua(lang);
+    location.reload();
+    return;
   }
+  if (lang === linguaDaCookie()) { evidenziaLingua(lang); return; }
+  combo.value = lang;
+  combo.dispatchEvent(new Event('change'));
+  evidenziaLingua(lang);
 }
 // stato iniziale: italiano, salvo cookie di traduzione già esistente
 evidenziaLingua(linguaDaCookie());
