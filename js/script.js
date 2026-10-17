@@ -43,8 +43,17 @@ document.querySelectorAll('a[href="#top"]').forEach(a => {
 });
 
 // ===== Selettore lingua (Google Translate) =====
-// Il cambio lingua avviene comandi diretti al menu nascosto di Google Translate:
-// niente cookie scritti a mano (causa di blocchi), Google gestisce da sé traduzione e memoria.
+// La lingua scelta è memorizzata dal sito in localStorage ("smileLingua") ed è lei
+// la fonte di verità: l'italiano non dipende più da Google né dal suo widget.
+// EN/TH vengono applicati con un comando diretto al menu nascosto di Google Translate.
+const CHIAVE_LANG = 'smileLingua';
+
+function leggiPreferenza() {
+  try { return localStorage.getItem(CHIAVE_LANG); } catch (e) { return null; }
+}
+function salvaPreferenza(lang) {
+  try { localStorage.setItem(CHIAVE_LANG, lang); } catch (e) {}
+}
 function evidenziaLingua(lang) {
   document.querySelectorAll('#langSwitch button').forEach(b => {
     b.classList.toggle('attivo', b.dataset.lang === lang);
@@ -53,6 +62,10 @@ function evidenziaLingua(lang) {
 function linguaDaCookie() {
   const m = document.cookie.match(/googtrans=\/it\/([a-z]{2})/);
   return m ? m[1] : 'it';
+}
+function paginaTradotta() {
+  return document.body.classList.contains('translated-ltr') ||
+         document.body.classList.contains('translated-rtl');
 }
 function comboGoogle() {
   return document.querySelector('#google_translate_element .goog-te-combo');
@@ -68,32 +81,65 @@ function cancellaCookieGoogtrans() {
     document.cookie = 'googtrans=;expires=Thu, 01 Jan 1970 00:00:00 UTC' + v;
   });
 }
+
 let tentativiCombo = 0;
 function cambiaLingua(lang) {
-  const combo = comboGoogle();
-  if (!combo) {
-    // widget di Google non ancora caricato: riprova per un massimo di ~6 secondi
-    if (++tentativiCombo < 15) setTimeout(() => cambiaLingua(lang), 400);
-    return;
-  }
-  tentativiCombo = 0;
+  salvaPreferenza(lang);
   if (lang === 'it') {
-    // già in italiano: niente da fare
-    if (linguaDaCookie() === 'it') { evidenziaLingua('it'); return; }
-    // unico metodo affidabile per tornare all'originale: cancellare il cookie
-    // di traduzione e ricaricare dal server (il sito resta in italiano)
+    // già in italiano e pagina non tradotta: niente da fare
+    if (linguaDaCookie() === 'it' && !paginaTradotta()) {
+      evidenziaLingua('it');
+      return;
+    }
+    // metodo sicuro e indipendente da Google: cancella il cookie di traduzione
+    // e ricarica dal server (il sito resta in italiano)
     evidenziaLingua('it');
     cancellaCookieGoogtrans();
     location.reload();
     return;
   }
-  if (lang === linguaDaCookie()) { evidenziaLingua(lang); return; }
+  // EN / TH: comando diretto al menu nascosto di Google Translate
+  if (lang === linguaDaCookie() && paginaTradotta()) {
+    evidenziaLingua(lang);
+    return;
+  }
+  const combo = comboGoogle();
+  if (!combo) {
+    // widget non ancora caricato: riprova per ~6 secondi (la preferenza resta salvata)
+    if (++tentativiCombo < 15) setTimeout(() => cambiaLingua(lang), 400);
+    return;
+  }
+  tentativiCombo = 0;
   combo.value = lang;
   combo.dispatchEvent(new Event('change'));
   evidenziaLingua(lang);
 }
-// stato iniziale: italiano, salvo cookie di traduzione già esistente
-evidenziaLingua(linguaDaCookie());
+
+// ===== avvio =====
+// NB: i cookie di traduzione sono già stati cancellati nell'<head> se la preferenza
+// è l'italiano (script inline), prima dell'inizializzazione del widget di Google.
+const preferenza = leggiPreferenza();
+if (!preferenza || preferenza === 'it') {
+  cancellaCookieGoogtrans(); // doppia sicurezza, dopo il caricamento del DOM
+  evidenziaLingua('it');
+} else {
+  evidenziaLingua(preferenza);
+  // se il cookie di Google è sparito, riapplica la lingua preferita appena il widget è pronto
+  if (linguaDaCookie() !== preferenza) {
+    let n = 0;
+    const timer = setInterval(() => {
+      const c = comboGoogle();
+      if (c) {
+        clearInterval(timer);
+        c.value = preferenza;
+        c.dispatchEvent(new Event('change'));
+      } else if (++n > 20) {
+        clearInterval(timer);
+      }
+    }, 400);
+  }
+}
+
 // click gestito con delega: continua a funzionare anche dopo la traduzione della pagina
 document.addEventListener('click', (e) => {
   const btn = e.target.closest ? e.target.closest('#langSwitch button') : null;
