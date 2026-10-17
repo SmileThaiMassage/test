@@ -34,8 +34,10 @@
   .hamburger{display:none;}
   .menu-mobile{display:none;}
 
-  /* Selettore lingua */
+  /* Selettore lingua: elemento indipendente dalla nav (sempre visibile, anche su mobile) */
   .lang-switch{
+    position:fixed;top:22px;left:50%;transform:translateX(-50%);
+    z-index:210;
     display:flex;gap:4px;
     padding:4px;border-radius:30px;
     background:rgba(0,0,0,.3);
@@ -276,15 +278,21 @@
     .anim .fade-in{opacity:1;transform:none;transition:none;}
   }
 
+  /* nav più compatta su schermi medi, così il selettore centrato non tocca i link */
+  @media(max-width:920px){
+    nav ul{gap:16px;}
+    nav a{font-size:13px;letter-spacing:.08em;}
+  }
+
   /* ---------- OVERRIDE MOBILE (sempre in fondo) ---------- */
   @media(max-width:760px){
     nav{display:none;}
-    nav .lang-switch{
-      display:flex;position:fixed;top:16px;left:16px;z-index:210;
+    .lang-switch{
+      top:16px;left:16px;transform:none;
       background:rgba(30,36,24,.75);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
       box-shadow:0 6px 18px rgba(0,0,0,.4);
     }
-    nav .lang-switch button{padding:8px 11px;font-size:12px;}
+    .lang-switch button{padding:8px 11px;font-size:12px;}
     .hamburger{
       display:flex;
       position:fixed;top:16px;right:16px;z-index:210;
